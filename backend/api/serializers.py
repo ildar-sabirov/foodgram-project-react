@@ -1,20 +1,23 @@
 from rest_framework import serializers
+from djoser.serializers import UserCreateSerializer
 
 from users.models import User
 
-EMAIL_LENGTH = 254
-USERNAME_LENGTH = 150
+# EMAIL_LENGTH = 254
+# USERNAME_LENGTH = 150
 
 
-class SignupSerializer(serializers.ModelSerializer):
-    """Сериализатор для регистрации пользователя."""
-    class Meta:
+class CustomUserCreateSerializer(UserCreateSerializer):
+    class Meta(UserCreateSerializer.Meta):
         model = User
-        fields = ('email', 'username', 'first_name', 'last_name', 'password',)
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        fields = (
+            'email',
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'password'
+        )
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -22,5 +25,5 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'email', 'id', 'username', 'first_name', 'last_name',
+            'email', 'id', 'username', 'first_name', 'last_name'
         )
