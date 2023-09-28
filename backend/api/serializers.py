@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer
 
+from recipes.models import Tag, Ingredient
 from users.models import User
 
 # EMAIL_LENGTH = 254
@@ -27,3 +28,15 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name'
         )
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ('id', 'name', 'color', 'slug')
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
