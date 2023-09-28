@@ -146,7 +146,11 @@ REST_FRAMEWORK = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DJOSER = {
+    'PERMISSIONS': {
+        'user_list': ['rest_framework.permissions.AllowAny'],
+    },
+    'HIDE_USERS': False,
     'SERIALIZERS': {
         'user_create': 'api.serializers.CustomUserCreateSerializer'
-    }
+    },
 }
