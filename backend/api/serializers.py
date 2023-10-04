@@ -7,7 +7,9 @@ from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer
 from django.core.files.base import ContentFile
 
-from recipes.models import Tag, Ingredient, Recipe, IngredientRecipe
+from recipes.models import (
+    Tag, Ingredient, Recipe, IngredientRecipe, FavoriteRecipe
+)
 
 User = get_user_model()
 
@@ -78,6 +80,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         many=True
     )
     author = UserSerializer(read_only=True)
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -86,6 +89,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             'tags',
             'author',
             'ingredients',
+            'is_favorited',
             'name',
             'image',
             'text',
@@ -128,3 +132,19 @@ class RecipeSerializer(serializers.ModelSerializer):
                 recipe=instance, ingredient=ingredient, amount=amount
             )
         return instance
+
+    def get_is_favorited(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return FavoriteRecipe.objects.filter(
+                user=user, recipe=obj
+            ).exists()
+        return False
+
+
+class FavoriteRecipeSerializer(serializers.ModelSerializer):
+    image = Base64ImageField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')

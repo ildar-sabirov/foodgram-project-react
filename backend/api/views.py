@@ -1,12 +1,14 @@
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from recipes.models import Tag, Ingredient, Recipe
+from recipes.models import Tag, Ingredient, Recipe, FavoriteRecipe
 from .permissions import IsAdminOrReadOnly, IsAuthorOfRecipe
 from .serializers import (
-    UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer
+    UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer,
+    FavoriteRecipeSerializer
 )
 
 User = get_user_model()
@@ -58,3 +60,32 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['post', 'delete'])
+    def favorite(self, request, pk):
+        recipe = get_object_or_404(Recipe, id=pk)
+        favorite_recipe = FavoriteRecipe.objects.filter(
+            user=request.user, recipe=recipe
+        )
+        if request.method == 'POST':
+            if favorite_recipe:
+                return Response(
+                    {'error': 'Рецепт уже есть в избранном.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            else:
+                FavoriteRecipe.objects.create(user=request.user, recipe=recipe)
+                serializer = FavoriteRecipeSerializer(recipe)
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED
+                )
+        elif request.method == 'DELETE':
+            if favorite_recipe:
+                favorite_recipe.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response(
+                    {'error': 'Рецепт не найден в избранном.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
