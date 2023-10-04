@@ -1,11 +1,15 @@
+import base64
+
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer
+from django.core.files.base import ContentFile
 
-from recipes.models import Tag, Ingredient
-from users.models import User
+from recipes.models import Tag, Ingredient, Recipe, IngredientRecipe
 
-# EMAIL_LENGTH = 254
-# USERNAME_LENGTH = 150
+User = get_user_model()
 
 
 class CustomUserCreateSerializer(UserCreateSerializer):
@@ -40,3 +44,87 @@ class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = ('id', 'name', 'measurement_unit')
+
+
+class Base64ImageField(serializers.ImageField):
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith('data:image'):
+            format, imgstr = data.split(';base64,')
+            ext = format.split('/')[-1]
+
+            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
+
+        return super().to_internal_value(data)
+
+
+class IngredientRecipeSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source='ingredient.id')
+    name = serializers.ReadOnlyField(source='ingredient.name')
+    measurement_unit = serializers.ReadOnlyField(
+        source='ingredient.measurement_unit'
+    )
+
+    class Meta:
+        model = IngredientRecipe
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    image = Base64ImageField()
+    tags = TagSerializer(read_only=True, many=True)
+    ingredients = IngredientRecipeSerializer(
+        source='ingredient_recipes',
+        read_only=True,
+        many=True
+    )
+    author = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'id',
+            'tags',
+            'author',
+            'ingredients',
+            'name',
+            'image',
+            'text',
+            'cooking_time',
+        )
+
+    @transaction.atomic
+    def create(self, validated_data):
+        ingredients = self.initial_data.get('ingredients')
+        tags = self.initial_data.get('tags')
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        for ingredient in ingredients:
+            ingredient_id = ingredient['id']
+            amount = ingredient['amount']
+            ingredient = get_object_or_404(Ingredient, id=ingredient_id)
+            IngredientRecipe.objects.create(
+                recipe=recipe, ingredient=ingredient, amount=amount
+            )
+        return recipe
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        tags = self.initial_data.get('tags')
+        ingredients = self.initial_data.get('ingredients')
+        instance.name = validated_data.get('name', instance.name)
+        instance.text = validated_data.get('text', instance.text)
+        instance.cooking_time = validated_data.get(
+            'cooking_time', instance.cooking_time
+        )
+        instance.save()
+        instance.tags.clear()
+        instance.tags.set(tags)
+        instance.ingredients.clear()
+        for ingredient in ingredients:
+            ingredient_id = ingredient['id']
+            amount = ingredient['amount']
+            ingredient = get_object_or_404(Ingredient, id=ingredient_id)
+            IngredientRecipe.objects.create(
+                recipe=instance, ingredient=ingredient, amount=amount
+            )
+        return instance
