@@ -10,6 +10,7 @@ from django.core.files.base import ContentFile
 from recipes.models import (
     Tag, Ingredient, Recipe, IngredientRecipe, FavoriteRecipe
 )
+from users.models import Follow
 
 User = get_user_model()
 
@@ -29,11 +30,24 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для работы с данными пользователей."""
+    is_subscribed = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
-            'email', 'id', 'username', 'first_name', 'last_name'
+            'email',
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'is_subscribed'
         )
+
+    def get_is_subscribed(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return Follow.objects.filter(user=user, following=obj).exists()
+        return False
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -148,3 +162,16 @@ class FavoriteRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class FollowSerializer(UserSerializer):
+    recipes = FavoriteRecipeSerializer(
+        many=True, read_only=True, source='recipe_set'
+    )
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
+
+    def get_recipes_count(self, obj):
+        return obj.recipe_set.count()

@@ -5,26 +5,59 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from recipes.models import Tag, Ingredient, Recipe, FavoriteRecipe
+from users.models import Follow
 from .permissions import IsAdminOrReadOnly, IsAuthorOfRecipe
 from .serializers import (
     UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer,
-    FavoriteRecipeSerializer
+    FavoriteRecipeSerializer, FollowSerializer
 )
 
 User = get_user_model()
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = (permissions.AllowAny,)
+    @action(detail=True, methods=['post', 'delete'])
+    def subscribe(self, request, pk):
+        author = get_object_or_404(User, id=pk)
+        if request.method == 'POST':
+            if self.request.user == author:
+                return Response(
+                    {'error': 'Вы не можете подписаться на самого себя.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if Follow.objects.filter(
+                    user=self.request.user, following=author
+            ).exists():
+                return Response(
+                    {'error': 'Вы уже подписаны на этого пользователя.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            Follow.objects.create(
+                user=self.request.user, following=author
+            )
+            serializer = FollowSerializer(
+                author, context={'request': request}
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        elif request.method == 'DELETE':
+            subscription = Follow.objects.filter(
+                user=request.user, following=author
+            )
+            if subscription:
+                subscription.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {'error': 'Вы не подписаны на этого пользователя.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    @action(
-        detail=False, methods=['get'], url_path='me',
-        permission_classes=(permissions.IsAuthenticated,)
-    )
-    def owner_profile(self, request):
-        serializer = UserSerializer(request.user)
+    @action(detail=False, methods=['get'])
+    def subscriptions(self, request):
+        subscriptions = Follow.objects.filter(user=self.request.user)
+        authors = [subscription.following for subscription in subscriptions]
+        serializer = FollowSerializer(
+            authors, many=True, context={'request': request}
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
