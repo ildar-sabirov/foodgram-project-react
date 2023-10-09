@@ -156,7 +156,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         return False
 
 
-class FavoriteRecipeSerializer(serializers.ModelSerializer):
+class ModifiedRecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
 
     class Meta:
@@ -165,7 +165,7 @@ class FavoriteRecipeSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(UserSerializer):
-    recipes = FavoriteRecipeSerializer(
+    recipes = ModifiedRecipeSerializer(
         many=True, read_only=True, source='recipe_set'
     )
     recipes_count = serializers.SerializerMethodField()
