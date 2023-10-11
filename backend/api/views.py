@@ -14,7 +14,7 @@ from recipes.models import (
 from users.models import Follow
 from .permissions import IsAdminOrReadOnly, IsAuthorOfRecipe
 from .serializers import (
-    UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer,
+    TagSerializer, IngredientSerializer, RecipeSerializer,
     ModifiedRecipeSerializer, FollowSerializer
 )
 
@@ -175,6 +175,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
         response = HttpResponse(shopping_cart_list, content_type='text/plain')
         response['Content-Disposition'] = (
-            f'attachment; filename=shopping_cart.txt'
+            'attachment; filename=shopping_cart.txt'
         )
         return response

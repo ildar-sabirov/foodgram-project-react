@@ -29,7 +29,6 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор для работы с данными пользователей."""
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
