@@ -2,7 +2,7 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from rest_framework import serializers
+from rest_framework import serializers, status
 from djoser.serializers import UserCreateSerializer
 from django.core.files.base import ContentFile
 
@@ -203,3 +203,19 @@ class FollowSerializer(UserSerializer):
 
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
+        read_only_fields = ('username', 'email', 'first_name', 'last_name')
+
+    def validate(self, data):
+        author = self.instance
+        user = self.context['request'].user
+        if Follow.objects.filter(following=author, user=user).exists():
+            raise serializers.ValidationError(
+                'Вы уже подписаны на этого пользователя.',
+                status.HTTP_400_BAD_REQUEST
+            )
+        if user == author:
+            raise serializers.ValidationError(
+                'Вы не можете подписаться на самого себя.',
+                status.HTTP_400_BAD_REQUEST
+            )
+        return data
