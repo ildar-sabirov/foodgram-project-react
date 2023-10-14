@@ -3,38 +3,26 @@ from django.db import models
 
 from .validators import validate_username
 
-USERNAME_LENGTH = 150
-EMAIL_LENGTH = 254
-FIRST_NAME_LENGTH = 150
-LAST_NAME_LENGTH = 150
-
 
 class User(AbstractUser):
-    """
-    Модель пользователя платформы.
-    """
     email = models.EmailField(
-        max_length=EMAIL_LENGTH,
+        max_length=150,
         unique=True,
-        blank=False,
-        verbose_name='Email',
+        verbose_name='Email'
     )
     username = models.CharField(
-        max_length=USERNAME_LENGTH,
+        max_length=254,
         unique=True,
-        blank=False,
         verbose_name='Имя пользователя',
-        validators=[validate_username],
+        validators=[validate_username]
     )
     first_name = models.CharField(
-        max_length=FIRST_NAME_LENGTH,
-        blank=False,
-        verbose_name='Имя',
+        max_length=150,
+        verbose_name='Имя'
     )
     last_name = models.CharField(
-        max_length=LAST_NAME_LENGTH,
-        blank=False,
-        verbose_name='Фамилия',
+        max_length=150,
+        verbose_name='Фамилия'
     )
 
     USERNAME_FIELD = 'email'
@@ -54,12 +42,18 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='follower',
+        verbose_name='Подписчик'
     )
     following = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='following',
+        verbose_name='Автор'
     )
 
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+
     def __str__(self):
-        return f'{self.user} - {self.following}'
+        return f'{self.user} оформил подписку на {self.following}'

@@ -2,7 +2,6 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer
 from django.core.files.base import ContentFile
@@ -109,41 +108,74 @@ class RecipeSerializer(serializers.ModelSerializer):
             'cooking_time',
         )
 
+    def validate(self, data):
+        ingredients = self.initial_data.get('ingredients')
+        tags = self.initial_data.get('tags')
+        cooking_time = data.get('cooking_time')
+        if not ingredients:
+            raise serializers.ValidationError(
+                'Не был получен ингредиент для рецепта.'
+            )
+        ingredients_id_list = []
+        for ingredient in ingredients:
+            amount = ingredient.get('amount')
+            ingredient_id = ingredient.get('id')
+            if int(amount) <= 0:
+                raise serializers.ValidationError(
+                    'Количество ингредиента не может быть меньше единицы.'
+                )
+            if ingredient_id in ingredients_id_list:
+                raise serializers.ValidationError(
+                    'Ингредиенты не должны повторяться.'
+                )
+            ingredients_id_list.append(ingredient_id)
+        if not tags:
+            raise serializers.ValidationError(
+                'Не был получен тэг для рецепта.'
+            )
+        tags_list = []
+        for tag in tags:
+            if tag in tags_list:
+                raise serializers.ValidationError(
+                    'Тэги не должны повторяться.'
+                )
+            tags_list.append(tag)
+        if cooking_time <= 0:
+            raise serializers.ValidationError(
+                'Время приготовления не может быть меньше единицы.'
+            )
+        return data
+
+    @transaction.atomic
+    def create_or_update_ingredients(self, recipe, ingredients):
+        ingredient_objects = [
+            IngredientRecipe(
+                recipe=recipe,
+                ingredient_id=ingredient.get('id'),
+                amount=ingredient.get('amount')
+            )
+            for ingredient in ingredients
+        ]
+        IngredientRecipe.objects.bulk_create(ingredient_objects)
+
     @transaction.atomic
     def create(self, validated_data):
         ingredients = self.initial_data.get('ingredients')
         tags = self.initial_data.get('tags')
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            amount = ingredient['amount']
-            ingredient = get_object_or_404(Ingredient, id=ingredient_id)
-            IngredientRecipe.objects.create(
-                recipe=recipe, ingredient=ingredient, amount=amount
-            )
+        self.create_or_update_ingredients(recipe, ingredients)
         return recipe
 
     @transaction.atomic
     def update(self, instance, validated_data):
         tags = self.initial_data.get('tags')
         ingredients = self.initial_data.get('ingredients')
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time
-        )
-        instance.save()
+        instance = super().update(instance, validated_data)
         instance.tags.clear()
         instance.tags.set(tags)
         instance.ingredients.clear()
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            amount = ingredient['amount']
-            ingredient = get_object_or_404(Ingredient, id=ingredient_id)
-            IngredientRecipe.objects.create(
-                recipe=instance, ingredient=ingredient, amount=amount
-            )
+        self.create_or_update_ingredients(instance, ingredients)
         return instance
 
     def get_is_favorited(self, obj):
@@ -167,10 +199,7 @@ class FollowSerializer(UserSerializer):
     recipes = ModifiedRecipeSerializer(
         many=True, read_only=True, source='recipe_set'
     )
-    recipes_count = serializers.SerializerMethodField()
+    recipes_count = serializers.ReadOnlyField(source='recipe_set.count')
 
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
-
-    def get_recipes_count(self, obj):
-        return obj.recipe_set.count()
