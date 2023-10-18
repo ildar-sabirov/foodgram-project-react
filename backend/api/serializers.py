@@ -1,14 +1,12 @@
 import base64
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
-from rest_framework import serializers, status
-from djoser.serializers import UserCreateSerializer
 from django.core.files.base import ContentFile
-
-from recipes.models import (
-    Tag, Ingredient, Recipe, IngredientRecipe, FavoriteRecipe
-)
+from django.db import transaction
+from djoser.serializers import UserCreateSerializer
+from recipes.models import (FavoriteRecipe, Ingredient, IngredientRecipe,
+                            Recipe, Tag)
+from rest_framework import serializers, status
 from users.models import Follow
 
 User = get_user_model()

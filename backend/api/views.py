@@ -1,22 +1,19 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from recipes.models import (FavoriteRecipe, Ingredient, IngredientRecipe,
+                            Recipe, ShoppingCartRecipe, Tag)
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-
-from recipes.models import (
-    Tag, Ingredient, Recipe, FavoriteRecipe, ShoppingCartRecipe,
-    IngredientRecipe
-)
 from users.models import Follow
+
 from .filters import IngredientFilter
 from .permissions import IsAdminOrReadOnly, IsAuthorOfRecipe
-from .serializers import (
-    TagSerializer, IngredientSerializer, RecipeSerializer,
-    ModifiedRecipeSerializer, FollowSerializer
-)
+from .serializers import (FollowSerializer, IngredientSerializer,
+                          ModifiedRecipeSerializer, RecipeSerializer,
+                          TagSerializer)
 from .utils import generate_shopping_cart_report
 
 User = get_user_model()
