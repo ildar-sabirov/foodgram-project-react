@@ -13,17 +13,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
   backend:
-    build: ../backend/
+    image: madgrowth/foodgram_backend
     env_file: .env
-    depends_on:
-      - db
     volumes:
       - backend_static:/app/static
       - backend_media:/app/media
+    depends_on:
+      - db
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: madgrowth/foodgram_frontend
     volumes:
       - static:/app/result_build/build
     depends_on:
