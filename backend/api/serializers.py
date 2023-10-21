@@ -5,7 +5,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from djoser.serializers import UserCreateSerializer
 from recipes.models import (FavoriteRecipe, Ingredient, IngredientRecipe,
-                            Recipe, Tag)
+                            Recipe, ShoppingCartRecipe, Tag)
 from rest_framework import serializers, status
 from users.models import Follow
 
@@ -91,6 +91,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     )
     author = UserSerializer(read_only=True)
     is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -100,6 +101,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             'author',
             'ingredients',
             'is_favorited',
+            'is_in_shopping_cart',
             'name',
             'image',
             'text',
@@ -180,6 +182,14 @@ class RecipeSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         if user.is_authenticated:
             return FavoriteRecipe.objects.filter(
+                user=user, recipe=obj
+            ).exists()
+        return False
+
+    def get_is_in_shopping_cart(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return ShoppingCartRecipe.objects.filter(
                 user=user, recipe=obj
             ).exists()
         return False
