@@ -7,13 +7,13 @@ import json
 def load_data(apps, schema_editor):
     Ingredient = apps.get_model('recipes', 'Ingredient')
     Tag = apps.get_model('recipes', 'Tag')
-    with open('../data/ingredients.json', 'r', encoding='utf-8') as file:
+    with open('data/ingredients.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
         for item in data:
             Ingredient.objects.create(
                 name=item['name'], measurement_unit=item['measurement_unit']
             )
-    with open('../data/tags.json', 'r', encoding='utf-8') as file:
+    with open('data/tags.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
         for item in data:
             Tag.objects.create(
